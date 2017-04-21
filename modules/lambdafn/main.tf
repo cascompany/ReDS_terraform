@@ -2,12 +2,12 @@
 # LAMBDA variables
 # = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
-variable "unique_name"        {}
-variable "stack_prefix"       {}
-variable "lambda_file"        {}
+variable "unique_name" {}
+variable "stack_prefix" {}
+variable "lambda_file" {}
 variable "alarms_yaml_render" {}
-variable "vars_yaml_render"   {}
-variable "aws_iam_role_arn"   {}
+variable "vars_yaml_render" {}
+variable "aws_iam_role_arn" {}
 
 # = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 # LAMBDA resources
@@ -17,9 +17,12 @@ variable "aws_iam_role_arn"   {}
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 resource "null_resource" "buildlambdazip" {
-  triggers { key = "${uuid()}" }
+  triggers {
+    key = "${uuid()}"
+  }
+
   provisioner "local-exec" {
-  command = <<EOF
+    command = <<EOF
   mkdir lambda && mkdir tmp
   unzip reds/deps.zip -d lambda/
   cp reds/reds.py lambda/reds.py
@@ -41,21 +44,21 @@ EOF
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 resource "aws_lambda_function" "rds_cas_autoscale_lambda" {
-  function_name   = "${var.stack_prefix}_lambda_${var.unique_name}"
-  filename        = "${var.lambda_file}"
-  role            = "${var.aws_iam_role_arn}"
-  runtime         = "python2.7"
-  handler         = "reds.lambda_handler"
-  timeout         = "30"
-  depends_on      = ["null_resource.buildlambdazip"]
+  function_name = "${var.stack_prefix}_lambda_${var.unique_name}"
+  filename      = "${var.lambda_file}"
+  role          = "${var.aws_iam_role_arn}"
+  runtime       = "python2.7"
+  handler       = "reds.lambda_handler"
+  timeout       = "30"
+  depends_on    = ["null_resource.buildlambdazip"]
 }
 
 # Run the function every 5 minutes.
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 resource "aws_cloudwatch_event_rule" "every_five_minutes" {
-  name = "${var.stack_prefix}_lambda_event_${var.unique_name}"
-  description = "Fires every five minutes"
+  name                = "${var.stack_prefix}_lambda_event_${var.unique_name}"
+  description         = "Fires every five minutes"
   schedule_expression = "rate(5 minutes)"
 }
 
@@ -63,30 +66,34 @@ resource "aws_cloudwatch_event_rule" "every_five_minutes" {
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 resource "aws_cloudwatch_event_target" "check_every_five_minutes" {
-    rule = "${aws_cloudwatch_event_rule.every_five_minutes.name}"
-    target_id = "rds_cas_autoscale_lambda"
-    arn = "${aws_lambda_function.rds_cas_autoscale_lambda.arn}"
+  rule      = "${aws_cloudwatch_event_rule.every_five_minutes.name}"
+  target_id = "rds_cas_autoscale_lambda"
+  arn       = "${aws_lambda_function.rds_cas_autoscale_lambda.arn}"
 }
 
 # Allow lambda to be called from cloudwatch
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 resource "aws_lambda_permission" "allow_cloudwatch_to_call" {
-  statement_id = "${var.stack_prefix}_AllowExecutionFromCloudWatch_${var.unique_name}"
-  action = "lambda:InvokeFunction"
+  statement_id  = "${var.stack_prefix}_AllowExecutionFromCloudWatch_${var.unique_name}"
+  action        = "lambda:InvokeFunction"
   function_name = "${aws_lambda_function.rds_cas_autoscale_lambda.function_name}"
-  principal = "events.amazonaws.com"
-  source_arn = "${aws_cloudwatch_event_rule.every_five_minutes.arn}"
+  principal     = "events.amazonaws.com"
+  source_arn    = "${aws_cloudwatch_event_rule.every_five_minutes.arn}"
 }
 
 # Delete temporary resources
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 resource "null_resource" "deletetmp" {
-  triggers { key = "${uuid()}" }
+  triggers {
+    key = "${uuid()}"
+  }
+
   depends_on = ["aws_lambda_function.rds_cas_autoscale_lambda"]
+
   provisioner "local-exec" {
-  command = "rm -rf lambda && rm -rf tmp"
+    command = "rm -rf lambda && rm -rf tmp"
   }
 }
 

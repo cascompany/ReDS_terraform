@@ -1,4 +1,5 @@
 # ReDS - ReActive Database System
+
 ## Terraform - Auto-Scale for RDS Instances
 ### This can save you up to 50% on your RDS costs, and avoid headaches on traffic spikes!
 
